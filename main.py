@@ -73,12 +73,26 @@ async def api_status(request):
         except:
             pass
 
+    # Obtener métricas del Grafo Topológico HFT
+    try:
+        hft_stats = await r_client.hgetall("HFT_STATS")
+        hft_nodos = hft_stats.get('nodos', '0')
+        hft_aristas = hft_stats.get('aristas', '0')
+        hft_oportunidades = hft_stats.get('oportunidades', '0')
+        hft_status = hft_stats.get('status', 'Inicializando Topology...')
+    except Exception:
+        hft_nodos = '0'
+        hft_aristas = '0'
+        hft_oportunidades = '0'
+        hft_status = 'Inicializando...'
+
     payload = {
         "status": "online",
         "hft": {
             "exchange": EXCHANGE_ID,
-            "pairs_mode": "Automático (Top 100)" if PARES == "AUTO" else PARES,
-            "status": "Escaneando Milisegundos..."
+            "pairs_mode": f"N-Dimensional ({hft_nodos} nodos, {hft_aristas} aristas)",
+            "status": hft_status,
+            "oportunidades": hft_oportunidades
         },
         "p2p": {
             "fiat": p2p_fiat,

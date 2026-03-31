@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
         globalStatus: document.getElementById('global-status'),
         hftExchange: document.getElementById('hft-exchange'),
         hftPairs: document.getElementById('hft-pairs'),
+        hftOpps: document.getElementById('hft-opps'),
         hftStatus: document.getElementById('hft-status'),
         p2pFiat: document.getElementById('p2p-fiat'),
         p2pBuy: document.getElementById('p2p-buy'),
@@ -41,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.hft) {
             animateValue(ui.hftExchange, data.hft.exchange);
             animateValue(ui.hftPairs, data.hft.pairs_mode);
+            animateValue(ui.hftOpps, data.hft.oportunidades || '0');
             ui.hftStatus.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> ${data.hft.status}`;
         }
 

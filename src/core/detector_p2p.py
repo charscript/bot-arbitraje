@@ -19,8 +19,8 @@ P2P_FIAT = os.getenv('P2P_FIAT', 'ARS').upper()
 
 # Configuración del Negocio Comercial P2P
 MIN_SPREAD_PCT = float(os.getenv('P2P_MIN_SPREAD_PCT', 0.8)) # Ganancia mínima
-CAPITAL_INICIAL = float(os.getenv('P2P_CAPITAL', 20000)) # Capital disponible
-UMBRAL_BALLENA = float(os.getenv('P2P_WHALE_LIMIT', 50000)) # Ej: Ignorar rivales que no operen al menos con 50.000 ARS por transacción
+CAPITAL_INICIAL = float(os.getenv('P2P_CAPITAL', 800000)) # Capital disponible (Dólares, ARS o UYU)
+UMBRAL_BALLENA = float(os.getenv('P2P_WHALE_LIMIT', 40000)) # Default: 40.000 UYU (aprox $1.000 USD). Evita a los peces menores.
 import json
 
 async def motor_inteligencia_p2p(r_client):
