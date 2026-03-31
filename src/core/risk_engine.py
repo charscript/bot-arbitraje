@@ -59,6 +59,7 @@ class RiskEngine:
         fee_total: float,
         profundidad_bid: float,
         profundidad_ask: float,
+        saldo_disponible_usdt: float = None
     ) -> dict:
         """
         Decide si una oportunidad es ejecutable.
@@ -68,6 +69,7 @@ class RiskEngine:
             fee_total:        Suma de todos los fees de la ruta.
             profundidad_bid:  Suma del top-5 bid en USDT.
             profundidad_ask:  Suma del top-5 ask en USDT.
+            saldo_disponible_usdt: El balance real disponible en el Exchange. Si es None, usa el estático.
 
         Returns:
             Dict con 'aprobado' (bool) y 'motivo' (str).
@@ -83,7 +85,16 @@ class RiskEngine:
             }
 
         # El capital a arriesgar no puede superar la profundidad disponible
-        capital_efectivo = min(self.capital_max_usdt, profundidad_bid, profundidad_ask)
+        
+        # --- GAMECHANGER: DYNAMIC ALLOCATION (Proxy de Kelly) ---
+        # Si le pasamos el saldo real del Exchange, jamás apostamos más del 10% del portafolio por trade.
+        if saldo_disponible_usdt is not None:
+            max_capital_permitido = saldo_disponible_usdt * 0.10
+        else:
+            max_capital_permitido = self.capital_max_usdt
+            
+        capital_efectivo = min(max_capital_permitido, profundidad_bid, profundidad_ask)
+        
         if capital_efectivo < 10:
             return {'aprobado': False, 'motivo': f'Profundidad insuficiente: {capital_efectivo:.2f} USDT'}
 

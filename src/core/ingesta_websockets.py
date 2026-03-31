@@ -15,7 +15,7 @@ REDIS_URL = os.getenv('REDIS_URL')
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 EXCHANGE_ID = os.getenv('EXCHANGE_ID', 'binance')
-PARES = os.getenv('PARES', 'BTC/USDT,ETH/BTC,ETH/USDT').split(',')
+PARES_ENV = os.getenv('PARES', 'AUTO')
 
 async def stream_orderbook(exchange, r_client, symbol):
     """Obtiene el orderbook en tiempo real y lo guarda en Redis ultra rapido."""
@@ -37,8 +37,8 @@ async def stream_orderbook(exchange, r_client, symbol):
             
             # Usar Redis Hash para almacenar la data estandarizada en O(1) tiempo
             await r_client.hset(f"{EXCHANGE_ID}:{symbol}", mapping=data)
-            
-            logging.info(f"[{symbol}] BID: {best_bid} | ASK: {best_ask}")
+            # Silenciamos la consola para el usuario cambiando a .debug, así el Dashboard Web brilla
+            logging.debug(f"[{symbol}] BID: {best_bid} | ASK: {best_ask}")
             
         except Exception as e:
             logging.error(f"Error de red procesando {symbol}: {e}")
@@ -57,14 +57,34 @@ async def main():
         'newUpdates': True, # Exigir al socket que solo traiga deltas o nuevos updates
     })
     
-    logging.info(f"Iniciando motor de ingesta WS para {EXCHANGE_ID.upper()}...")
+    if PARES_ENV.upper() == 'AUTO':
+        logging.info("Modo Inteligente Activado: Procesando matrices top 100 del exchange...")
+        try:
+            await exchange.load_markets()
+            bases = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK', 'BNB', 'DOT']
+            pares_activos = set()
+            for b in bases:
+                if f"{b}/USDT" in exchange.markets: pares_activos.add(f"{b}/USDT")
+                if f"{b}/BTC" in exchange.markets: pares_activos.add(f"{b}/BTC")
+                if f"{b}/ETH" in exchange.markets: pares_activos.add(f"{b}/ETH")
+            
+            # Asegurar base
+            pares_activos.update(['ETH/BTC', 'BTC/USDT', 'ETH/USDT'])
+            pares_lista = list(pares_activos)
+        except Exception as e:
+            logging.error(f"Error auto-descubriendo pares: {e}")
+            pares_lista = ['BTC/USDT', 'ETH/BTC', 'ETH/USDT']
+    else:
+        pares_lista = PARES_ENV.split(',')
+        
+    logging.info(f"Iniciando motor de ingesta WS Matrix para {len(pares_lista)} pares en {EXCHANGE_ID.upper()}...")
     
     try:
         await r_client.ping()
         logging.info("=> Redis detectado. Conectado.")
         
-        # Iniciar una corrutina concurrente para cada par de divisas en la triangulacion
-        tareas = [stream_orderbook(exchange, r_client, par) for par in PARES]
+        # Iniciar una corrutina concurrente para cada matriz escalada en la triangulacion masiva
+        tareas = [stream_orderbook(exchange, r_client, par) for par in pares_lista]
         await asyncio.gather(*tareas)
         
     except redis_sync.exceptions.ConnectionError:

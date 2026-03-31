@@ -11,6 +11,7 @@ sys.path.insert(0, 'src')
 from core.arbitraje_triangular import ArbitrajeTriangular
 from core.risk_engine import RiskEngine
 from core.telegram_alertas import enviar_mensaje, formatear_oportunidad, formatear_circuit_breaker
+from core.execution_engine import ExecutionEngine
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [DETECTOR] %(levelname)s - %(message)s')
@@ -33,6 +34,9 @@ risk = RiskEngine(
     min_spread_pct=float(os.getenv('MIN_SPREAD_PCT', 0.05)),
     max_errores_consecutivos=int(os.getenv('MAX_ERRORES_CONSECUTIVOS', 5)),
 )
+
+# El motor de ejecución (Market Maker / Sniper)
+execution = ExecutionEngine()
 
 
 async def leer_precios_redis(r_client):
@@ -84,8 +88,21 @@ async def ciclo_deteccion(r_client):
                         if resultado['aprobado']:
                             oportunidades_n += 1
                             ruta = " -> ".join(ciclo)
-                            logging.warning(f"*** OPORTUNIDAD #{oportunidades_n} APROBADA *** {ruta}")
+                            logging.warning(f"*** OPORTUNIDAD #{oportunidades_n} DETECTADA *** {ruta}")
+                            
+                            # ======= ¡EL GAMECHANGER! =======
+                            # En lugar de solo mirar, disparamos el cruce automático
+                            exito = await execution.execute_triangular_arbitrage(
+                                ruta=ciclo, 
+                                base_amount=float(os.getenv('CAPITAL_MAX_USDT', 500))
+                            )
+                            
                             msg = formatear_oportunidad(ciclo, resultado)
+                            if exito:
+                                msg += "\n\n🤖 <b>ACCIÓN:</b> ÓRDENES FOK EJECUTADAS."
+                            else:
+                                msg += "\n\n⚠️ <b>ACCIÓN:</b> Falla en ejecución. Riesgo abortado."
+                                
                             asyncio.create_task(enviar_mensaje(msg))
                         else:
                             logging.info(f"Ciclo detectado pero rechazado: {resultado['motivo']}")

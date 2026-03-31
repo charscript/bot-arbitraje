@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Arbitrage Terminal</title>
+    <!-- Favicon nulo para no dar 404 -->
+    <link rel="icon" href="data:image/x-icon;base64,">
+    <!-- Modern Typography: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Dynamic Background Orbs for Deep UI Feel -->
+    <div class="background-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    
+    <div class="dashboard-container">
+        <!-- HEADER -->
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-bolt text-glow"></i>
+                <h1>Ultimate <span>Arbitrage</span> Terminal</h1>
+            </div>
+            <div class="status-indicator">
+                <div class="pulse-dot"></div>
+                <span id="global-status">Conectando al Servidor Orquestador...</span>
+            </div>
+        </header>
+
+        <!-- MAIN CARDS GRID -->
+        <main class="grid-layout">
+            
+            <!-- MOTOR 1: HFT -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <i class="fa-solid fa-microchip icon-hft"></i>
+                    <h2>High-Frequency Crypto</h2>
+                </div>
+                <div class="card-body">
+                    <div class="metric">
+                        <span class="label">Exchange Base</span>
+                        <span class="value" id="hft-exchange">...</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Matriz de Vigilancia</span>
+                        <span class="value highlight" id="hft-pairs">...</span>
+                    </div>
+                    <div class="metric status-text">
+                        <span id="hft-status">Cargando escáner...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOTOR 2: P2P FIAT -->
+            <div class="glass-card featured-card">
+                <div class="card-header">
+                    <i class="fa-solid fa-money-bill-transfer icon-p2p text-glow"></i>
+                    <h2>P2P Fiat Maker Radar</h2>
+                </div>
+                <div class="card-body text-center">
+                    <div class="metric-row">
+                        <div class="metric box-metric">
+                            <span class="label">Publicá COMPRA a (<span id="p2p-fiat">Fiat</span>)</span>
+                            <span class="value text-success" id="p2p-buy">0.00</span>
+                        </div>
+                        <div class="metric box-metric">
+                            <span class="label">Publicá VENTA a</span>
+                            <span class="value text-danger" id="p2p-sell">0.00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="big-metric mt-4">
+                        <span class="label">Spread Operativo Disponible</span>
+                        <div class="huge-value text-glow" id="p2p-spread">0.00%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOTOR 3: BASIS NEUTRAL -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <i class="fa-solid fa-shield-halved icon-basis"></i>
+                    <h2>Delta-Neutral Funding</h2>
+                </div>
+                <div class="card-body">
+                    <div class="metric">
+                        <span class="label">Estrategia Segura</span>
+                        <span class="value">Spot + 1X Short Perp</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Alerta Mínima Fondeo</span>
+                        <span class="value text-warning" id="basis-target">...</span>
+                    </div>
+                    <div class="metric status-text">
+                        <span id="basis-status">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+        
+        <!-- LIVE CONSOLE TERMINAL -->
+        <div class="console-box mt-4 glass-card">
+            <div class="console-header">
+                <i class="fa-solid fa-terminal text-glow"></i>
+                <span style="font-weight: 600; color: #fff; margin-left:10px;">Live Operations Log</span>
+                <span class="pulse-dot" style="margin-left:auto; background: var(--accent-blue); box-shadow: 0 0 10px var(--accent-blue); width:8px; height:8px;"></span>
+            </div>
+            <div class="console-body" id="live-logs">
+                <div class="log-entry">Booting Institutional Kernel...</div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Sistema Cuantitativo Privado &copy; Ejecutando en tiempo real.</p>
+        </footer>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
