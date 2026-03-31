@@ -11,6 +11,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configuracion
+REDIS_URL = os.getenv('REDIS_URL')
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 EXCHANGE_ID = os.getenv('EXCHANGE_ID', 'binance')
@@ -44,7 +45,10 @@ async def stream_orderbook(exchange, r_client, symbol):
             await asyncio.sleep(1) # Backoff para evitar ban por spam
 
 async def main():
-    r_client = aioredis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    if REDIS_URL:
+        r_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    else:
+        r_client = aioredis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
     
     # Inicializar el modulo asincrono de CCXT
     exchange_class = getattr(ccxt, EXCHANGE_ID)

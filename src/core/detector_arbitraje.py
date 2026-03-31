@@ -15,6 +15,7 @@ from core.telegram_alertas import enviar_mensaje, formatear_oportunidad, formate
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [DETECTOR] %(levelname)s - %(message)s')
 
+REDIS_URL   = os.getenv('REDIS_URL')
 REDIS_HOST  = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT  = int(os.getenv('REDIS_PORT', 6379))
 EXCHANGE_ID = os.getenv('EXCHANGE_ID', 'bybit')
@@ -108,7 +109,11 @@ async def ciclo_deteccion(r_client):
 
 
 async def main():
-    r_client = aioredis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    if REDIS_URL:
+        r_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    else:
+        r_client = aioredis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+        
     try:
         await r_client.ping()
         logging.info("Conectado a Redis correctamente.")
