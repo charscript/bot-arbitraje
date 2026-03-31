@@ -1,0 +1,224 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\geometry{
+    a4paper,
+    total={170mm,257mm},
+    left=20mm,
+    top=20mm,
+}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\title{Proyecto Arbitraje Híbrido en CEX:\\Arquitectura y Matemática}
+\author{Documento Maestro}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Fundamentos Teóricos y Modelado Matemático (El Laboratorio)}
+
+Aquí introduciremos los tipos de ineficiencias en los exchanges centralizados (CEX), y las limitaciones lógicas y físicas como latencia y comisiones.
+
+\subsection{Teoría de Grafos Aplicada al Arbitraje Triangular}
+
+El arbitraje triangular busca explotar ineficiencias de precio entre tres pares de divisas dentro de un mismo exchange para evitar la latencia de red entre servidores distintos. Un ejemplo clásico es: USDT $\to$ BTC $\to$ ETH $\to$ USDT.
+
+Para que exista una ganancia real, el producto de las tasas de cambio (considerando las comisiones) tiene que ser estrictamente mayor a 1.
+Si $R$ es la tasa de cambio y $f$ es la comisión (fee), queremos que:
+\begin{equation}
+(R_1 \times (1 - f)) \times (R_2 \times (1 - f)) \times (R_3 \times (1 - f)) > 1
+\end{equation}
+
+Trabajar con multiplicaciones en algoritmos de búsqueda puede ser ineficiente e inducir problemas de precisión flotante. Por eso aplicamos logaritmo natural a ambos lados. Sabiendo que $\log(A \times B) = \log(A) + \log(B)$, la inecuación se transforma en una suma:
+\begin{equation}
+\log(R_1(1-f)) + \log(R_2(1-f)) + \log(R_3(1-f)) > 0
+\end{equation}
+
+Para aplicar algoritmos estándar de grafos que buscan el camino "más corto" o "mínimo", como el de Bellman-Ford, multiplicamos todo por $-1$, invirtiendo la desigualdad:
+\begin{equation}
+-\log(R_1(1-f)) - \log(R_2(1-f)) - \log(R_3(1-f)) < 0
+\end{equation}
+
+\textbf{Conclusión Teórica:} 
+Es posible modelar el mercado como un grafo dirigido $G = (V, E)$, donde los vértices ($V$) son las monedas y las aristas ($E$) representan los mercados disponibles. El peso de cada arista es $w = -\log(R \times (1 - f))$.
+Si el algoritmo de \textbf{Bellman-Ford} encuentra un ciclo con peso total negativo en este grafo, podemos afirmar que existe una oportunidad matemática de arbitraje rentable.
+
+\vspace{0.5cm}
+Implementación base en Python para evaluar el modelo sobre el grafo:
+
+\begin{lstlisting}[language=Python]
+import math
+
+class ArbitrajeTriangular:
+    def __init__(self, fee=0.001): 
+        # Asumimos 0.1% fee estandar (ej. Bybit/OKX Taker)
+        self.fee = fee
+        self.grafo = []
+        self.monedas = []
+
+    def agregar_mercado(self, base, quote, precio_bid, precio_ask):
+        if base not in self.monedas: self.monedas.append(base)
+        if quote not in self.monedas: self.monedas.append(quote)
+
+        # Arista: Vender Base para obtener Quote (Peso = -log(bid * (1 - fee)))
+        if precio_bid > 0:
+            peso_venta = -math.log(precio_bid * (1 - self.fee))
+            self.grafo.append((base, quote, peso_venta))
+
+        # Arista: Comprar Base usando Quote (Peso = -log((1 / ask) * (1 - fee)))
+        if precio_ask > 0:
+            peso_compra = -math.log((1.0 / precio_ask) * (1 - self.fee))
+            self.grafo.append((quote, base, peso_compra))
+
+    def bellman_ford(self, nodo_origen):
+        distancias = {nodo: float('inf') for nodo in self.monedas}
+        predecesores = {nodo: None for nodo in self.monedas}
+        distancias[nodo_origen] = 0
+
+        # Relajacion de aristas (V - 1 veces)
+        for _ in range(len(self.monedas) - 1):
+            for u, v, w in self.grafo:
+                if distancias[u] + w < distancias[v]:
+                    distancias[v] = distancias[u] + w
+                    predecesores[v] = u
+
+        # Deteccion de ciclos negativos
+        ciclos = []
+        for u, v, w in self.grafo:
+            if distancias[u] + w < distancias[v] - 1e-9:
+                ciclo = []
+                nodo_actual = v
+                for _ in range(len(self.monedas)):
+                    nodo_actual = predecesores[nodo_actual]
+                
+                nodo_inicio_ciclo = nodo_actual
+                ciclo.append(nodo_inicio_ciclo)
+                nodo_actual = predecesores[nodo_inicio_ciclo]
+                
+                while nodo_actual != nodo_inicio_ciclo:
+                    ciclo.append(nodo_actual)
+                    nodo_actual = predecesores[nodo_actual]
+                ciclo.append(nodo_inicio_ciclo)
+                
+                ciclo.reverse()
+                if ciclo not in ciclos:
+                    ciclos.append(ciclo)
+
+        return ciclos
+\end{lstlisting}
+
+\section{Arquitectura del Sistema (El Stack H\'ibrido)}
+
+El sistema est\'a dividido en dos grandes subsistemas desacoplados que se comunican v\'ia \textbf{Redis}:
+
+\begin{itemize}
+    \item \textbf{El M\'usculo} (\texttt{ingesta\_websockets.py}): Motor de ingest\'{\i}on. Conecta WebSockets de Bybit v\'ia CCXT Pro y vuelca el mejor \textit{bid/ask} de cada par a Redis en tiempo real con latencia sub-milisegundo.
+    \item \textbf{El C\'alculo} (\texttt{detector\_arbitraje.py}): Motor de an\'alisis. Lee el grafo desde Redis cada 50ms y ejecuta Bellman-Ford. Si encuentra un ciclo negativo, dispara la alerta de oportunidad.
+    \item \textbf{El Cerebro} (\texttt{main.py}): El orquestador. Lanza ambos motores en paralelo usando \texttt{asyncio.gather}.
+\end{itemize}
+
+\section{Motor de Ejecuci\'on y Conectividad (El M\'usculo)}
+
+Para encontrar estas oportunidades rentables es imperativo recolectar la microestructura del mercado (Limit Order Book) de forma casi instantánea. 
+
+\subsection{Conexión en Tiempo Real con Exchanges (WebSockets)}
+
+Se diseñó un módulo asíncrono utilizando \textbf{CCXT Pro} (basado en Asyncio), el cual mantiene conexiones WebSocket persistentes contra exchanges de primera línea (ej. Bybit). En lugar de usar la ineficiente arquitectura REST, el WebSocket solo devuelve \textit{deltas} o actualizaciones nuevas del mercado, permitiendo latencias asimétricas mínimas.
+
+Para desacoplar el motor de consumo (la red) del motor de cálculo matemático (Bellman-Ford), se integró una base de datos en memoria ultrarrápida bidireccional: \textbf{Redis}.
+A medida que el socket recibe las actualizaciones de precios para los tres vértices que conforman el triángulo ($BTC\to USDT$, $ETH\to BTC$, $ETH\to USDT$), el mejor bid y ask es inyectado inmediatamente mediante un \textit{Hash} `O(1)` en Redis.
+
+\begin{lstlisting}[language=Python]
+async def stream_orderbook(exchange, r_client, symbol):
+    # CCXT Pro usa WebSocket nativo
+    orderbook = await exchange.watch_order_book(symbol)
+    best_bid = orderbook['bids'][0][0]
+    best_ask = orderbook['asks'][0][0]
+    
+    # Push ultrarrapido a Redis
+    await r_client.hset(
+        f"bybit:{symbol}", 
+        mapping={'bid': best_bid, 'ask': best_ask, 'time': exchange.milliseconds()}
+    )
+\end{lstlisting}
+
+\subsection{Motor de Detecci\'on (Bellman-Ford en Tiempo Real)}
+
+El m\'odulo \texttt{detector\_arbitraje.py} corre un ciclo as\'incrono puro que se ejecuta aproximadamente 20 veces por segundo (cada $50$ms). En cada iteraci\'on:
+
+\begin{enumerate}
+    \item Lee los precios actuales de los 3 pares desde Redis mediante \texttt{HGETALL}.
+    \item Reconstruye el grafo dirigido $G = (V, E)$ con los pesos logar\'itmicos actualizados: $w = -\log(R \times (1 - f))$.
+    \item Ejecuta Bellman-Ford desde cada v\'ertice.
+    \item Si se detecta un ciclo negativo, registra la oportunidad con la ruta completa y el timestamp.
+\end{enumerate}
+
+\section{Orquestaci\'on e Inteligencia Artificial (El Cerebro)}
+
+\subsection{Interfaz de Control (Telegram)}
+
+Se implement\'o un m\'odulo de alertas nativo sobre la API de Telegram para notificar al operador en tiempo real. El m\'odulo \texttt{telegram\_alertas.py} env\'ia mensajes formateados ante dos eventos cr\'iticos:
+
+\begin{itemize}
+    \item \textbf{Oportunidad aprobada:} El ciclo negativo superó la validación del Risk Engine y el capital estimado de ganancia se muestra al instante.
+    \item \textbf{Circuit Breaker:} Si se acumulan $N$ errores consecutivos en una ventana de tiempo, el sistema se detiene y notifica al operador para intervención manual.
+\end{itemize}
+
+\section{Gesti\'on de Riesgo (Risk Engine)}
+
+El m\'odulo \texttt{risk\_engine.py} act\'ua como guardia antes de que cualquier oportunidad detectada por Bellman-Ford sea ejecutada o notificada. Implementa tres capas de protecci\'on:
+
+\begin{enumerate}
+    \item \textbf{Filtro de Spread Neto:} Calcula el spread neto descontando los fees de cada eslab\'on del ciclo. Solo pasan oportunidades donde $\text{spread}_{\text{neto}} > \delta_{\min}$, siendo $\delta_{\min}$ el umbral configurable (por defecto $0.05\%$).
+    \item \textbf{Filtro de Liquidez:} Compara el capital m\'aximo configurado contra la profundidad disponible en el \textit{order book}. Si la profundidad es menor a un m\'inimo, la oportunidad se descarta para evitar \textit{slippage} excesivo.
+    \item \textbf{Circuit Breaker:} Contador de errores con ventana temporal de $T$ segundos. Si se acumulan $N$ errores consecutivos, el sistema activa el circuit breaker y detiene toda operaci\'on hasta reinicio manual por el operador.
+\end{enumerate}
+
+\section{Estrategias Algor\'itmicas de Producci\'on}
+
+\begin{itemize}
+    \item \textbf{Arbitraje Triangular de Baja Latencia:} Implementado y funcionando (Secciones I y III).
+    \item \textbf{Spot-Perp Basis Arbitrage:} En desarrollo -- fase II.
+    \item \textbf{Funding Rate Arbitrage:} En desarrollo -- fase II.
+\end{itemize}
+
+\section{Pruebas y Backtesting}
+
+Las pruebas de validaci\'on del sistema se ejecutaron sobre datos artificiales con spreads conocidos (ver Secci\'on I.2.). En la siguiente fase se implementar\'a un backtester con datos tick-by-tick descargados directamente de los exchanges.
+
+\end{document}
+

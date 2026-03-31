@@ -1,0 +1,12 @@
+\babel@toc {spanish}{}\relax 
+\contentsline {section}{\numberline {1}Fundamentos Teóricos y Modelado Matemático (El Laboratorio)}{2}{}%
+\contentsline {subsection}{\numberline {1.1}Teoría de Grafos Aplicada al Arbitraje Triangular}{2}{}%
+\contentsline {section}{\numberline {2}Arquitectura del Sistema (El Stack H\'ibrido)}{3}{}%
+\contentsline {section}{\numberline {3}Motor de Ejecuci\'on y Conectividad (El M\'usculo)}{3}{}%
+\contentsline {subsection}{\numberline {3.1}Conexión en Tiempo Real con Exchanges (WebSockets)}{3}{}%
+\contentsline {subsection}{\numberline {3.2}Motor de Detecci\'on (Bellman-Ford en Tiempo Real)}{4}{}%
+\contentsline {section}{\numberline {4}Orquestaci\'on e Inteligencia Artificial (El Cerebro)}{4}{}%
+\contentsline {subsection}{\numberline {4.1}Interfaz de Control (Telegram)}{4}{}%
+\contentsline {section}{\numberline {5}Gesti\'on de Riesgo (Risk Engine)}{4}{}%
+\contentsline {section}{\numberline {6}Estrategias Algor\'itmicas de Producci\'on}{5}{}%
+\contentsline {section}{\numberline {7}Pruebas y Backtesting}{5}{}%

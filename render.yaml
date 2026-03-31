@@ -1,0 +1,42 @@
+services:
+  # Base de datos Redis interna ultra rápida
+  - type: redis
+    name: arbitraje-redis
+    plan: free # Usa el plan gratis de conexión interna
+
+  # El bot quant (Background Worker)
+  - type: worker
+    name: bot-arbitraje-quant
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6
+      # Conexión automática al Redis que creamos arriba
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: arbitraje-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: arbitraje-redis
+          property: port
+      # Configuraciones de mercado
+      - key: EXCHANGE_ID
+        value: binance
+      - key: PARES
+        value: BTC/USDT,ETH/BTC,ETH/USDT
+      - key: CAPITAL_MAX_USDT
+        value: "500"
+      - key: MIN_SPREAD_PCT
+        value: "0.05"
+      - key: MAX_ERRORES_CONSECUTIVOS
+        value: "5"
+      # Secretos a configurar manualmente en Render:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
